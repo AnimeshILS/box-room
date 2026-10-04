@@ -10,7 +10,7 @@
  * new worker installs.
  */
 
-var SHELL_CACHE = 'boxroom-shell-v2.3.0';   // bumped for the supplier column
+var SHELL_CACHE = 'boxroom-shell-v2.3.1';   // ex-GST labelling
 var FONT_CACHE  = 'boxroom-fonts-v1';
 var KEEP = [SHELL_CACHE, FONT_CACHE];
 
