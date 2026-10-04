@@ -143,6 +143,9 @@
     color:var(--ink); line-height:1.15;
   }
   .tag-sub{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; margin-top:3px;}
+  /* the supplier, when two cards share a size, is the thing that tells them
+     apart - so it is darker than "inches" ever needed to be */
+  .tag-sub.sup{ color:var(--ink-soft); font-weight:600; text-transform:none; letter-spacing:0.01em; }
   .tag-meta{ font-size:11.5px; color:var(--ink-soft); font-family:var(--font-mono); margin-top:6px; }
   .tag-stock{
     display:flex; align-items:baseline; gap:6px; margin-top:12px;
@@ -211,7 +214,7 @@
 
   /* ===== inventory table ===== */
   .inv-row{
-    display:grid; grid-template-columns:1fr 90px 100px 70px; gap:10px; align-items:center;
+    display:grid; grid-template-columns:1fr 1fr 90px 100px 70px; gap:10px; align-items:center;
     padding:11px 0; border-bottom:1px solid var(--line);
   }
   .inv-row.head{ font-family:var(--font-body); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); border-bottom:1px solid var(--line-strong); }
@@ -229,14 +232,14 @@
 
   .add-form{
     margin-top:18px; padding:16px; background:var(--surface-sunken); border-radius:var(--radius);
-    display:grid; grid-template-columns:1fr 100px 100px auto; gap:10px; align-items:end;
+    display:grid; grid-template-columns:1fr 1fr 100px 100px auto; gap:10px; align-items:end;
   }
   .add-form label{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); display:block; margin-bottom:5px; }
   .add-form input{ width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:13px; background:var(--surface); }
   .add-form input:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
 
   @media (max-width:560px){
-    .inv-row{ grid-template-columns:1fr 72px 82px 62px; gap:6px; }
+    .inv-row{ grid-template-columns:1fr 1fr 62px 74px 58px; gap:5px; }
     .inv-row input[type=text], .inv-row input[type=number]{ padding:8px 6px; font-size:12px; }
     .icon-btn{ padding:7px 6px; font-size:11px; }
     .add-form{ grid-template-columns:1fr 1fr; }
@@ -384,14 +387,20 @@
 
     <h2 class="section-title" style="margin-top:26px;">Box types &amp; stock on hand</h2>
     <div class="settings-note">Set current stock counts here whenever you do a physical recount, or add and remove box sizes as your packaging changes. Cost per box is optional. Fill it in if you want per-order box costs tracked in history.</div>
+    <div class="settings-note">The same size from two suppliers is two rows, each with its own count and cost, and the packing screen shows them as two cards with the supplier under the size. Fill the supplier in on every row — the Pricing Desk matches a delivery on the size <em>and</em> the supplier, so a row left blank will not receive one.</div>
     <div class="inv-row head">
-      <div>Box size</div><div>Qty on hand</div><div>Cost / box (₹)</div><div></div>
+      <div>Box size</div><div>Supplier</div><div>Qty on hand</div><div>Cost / box (₹)</div><div></div>
     </div>
+    <datalist id="supplier-names"></datalist>
     <div id="inv-list"></div>
     <div class="add-form">
       <div>
         <label for="new-name">New box size / name</label>
         <input type="text" id="new-name" placeholder="e.g. 6x6x6">
+      </div>
+      <div>
+        <label for="new-supplier">Supplier</label>
+        <input type="text" id="new-supplier" placeholder="e.g. Gurez India" list="supplier-names">
       </div>
       <div>
         <label for="new-qty">Starting qty</label>
@@ -416,7 +425,7 @@
 </main>
 
 <div class="session-bar" id="session-bar">
-  <div class="tally">Session tally: <b id="tally-count">0</b> boxes across <span id="tally-types">0</span> sizes</div>
+  <div class="tally">Session tally: <b id="tally-count">0</b> boxes across <span id="tally-types">0</span> <span id="tally-types-word">kinds</span></div>
   <div style="display:flex; gap:10px;">
     <button class="btn btn-ghost" id="reset-session-btn" disabled>Reset</button>
     <button class="btn btn-primary" id="finish-session-btn" disabled>Commit</button>
@@ -471,6 +480,24 @@
   }
   function normalizeBoxName(s){
     return String(s).trim().replace(/×/g,'x').replace(/\s*[xX]\s*/g,'x').replace(/\s{2,}/g,' ');
+  }
+  // A box is its SIZE and its SUPPLIER. The same 9x6x3 from two suppliers is
+  // two boxes, two counts and two costs, because they cost different money -
+  // so the supplier is part of what identifies a row, not a note on it.
+  function normalizeSupplier(s){
+    return String(s == null ? '' : s).trim().replace(/\s{2,}/g,' ');
+  }
+  function supplierKey(s){ return normalizeSupplier(s).toLowerCase(); }
+  function boxKey(name, supplier){ return normalizeBoxName(name).toLowerCase() + '\u0000' + supplierKey(supplier); }
+  // Is there already a row for this size from this supplier? Used to warn
+  // rather than to block: two identical cards is confusing, not dangerous.
+  function twinOf(name, supplier, exceptId){
+    var k = boxKey(name, supplier);
+    for (var i=0;i<boxes.length;i++){
+      if (boxes[i].id === exceptId) continue;
+      if (boxKey(boxes[i].name, boxes[i].supplier) === k) return boxes[i];
+    }
+    return null;
   }
   function findBox(id){
     for (var i=0;i<boxes.length;i++) if (boxes[i].id === id) return boxes[i];
@@ -602,25 +629,35 @@
     if (!Array.isArray(boxes)) boxes = [];
     if (!Array.isArray(sessions)) sessions = [];
     if (!Array.isArray(queue)) queue = [];
-    for (var i=0;i<boxes.length;i++) boxes[i].name = normalizeBoxName(boxes[i].name);
+    for (var i=0;i<boxes.length;i++){
+      boxes[i].name = normalizeBoxName(boxes[i].name);
+      boxes[i].supplier = normalizeSupplier(boxes[i].supplier);
+    }
   }
   // Draw the default list so a fresh device has something on screen, but never
   // push it anywhere - that would overwrite real stock counts with zeros.
   function seedIfEmpty(){
     if (boxes.length) return false;
-    boxes = BOX_TYPES.map(function(n){ return { id:uid(), name:normalizeBoxName(n), qty:0, cost:0 }; });
+    boxes = BOX_TYPES.map(function(n){ return { id:uid(), name:normalizeBoxName(n), supplier:'', qty:0, cost:0 }; });
     saveLocal();
     return true;
   }
 
   // ---------------- pack view ----------------
 
+  // Smallest box first. Two rows of the same size - the same box from two
+  // suppliers - are broken by supplier and then by id, so their order on the
+  // grid never shuffles between renders and muscle memory holds.
   function byVolume(a,b){
     var va = volumetricWeightKg(a.name), vb = volumetricWeightKg(b.name);
-    if (va == null && vb == null) return 0;
-    if (va == null) return 1;
-    if (vb == null) return -1;
-    return va - vb;
+    if (va != null && vb != null && va !== vb) return va - vb;
+    if (va == null && vb != null) return 1;
+    if (vb == null && va != null) return -1;
+    var na = normalizeBoxName(a.name).toLowerCase(), nb = normalizeBoxName(b.name).toLowerCase();
+    if (na !== nb) return na < nb ? -1 : 1;
+    var sa = supplierKey(a.supplier), sb = supplierKey(b.supplier);
+    if (sa !== sb) return sa < sb ? -1 : 1;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   }
 
   function cardHtml(b){
@@ -633,19 +670,26 @@
     if (b.cost && b.cost > 0) meta.push('₹' + b.cost.toFixed(2) + '/box');
     var metaLine = meta.length ? '<div class="tag-meta">' + meta.join(' · ') + '</div>' : '';
     var safeName = escapeHtml(b.name);
+    // The supplier takes the sub-line when there is one: with the same size on
+    // the shelf from two suppliers, that line is the only thing telling the two
+    // cards apart, so it earns the place "inches" was holding.
+    var sup = normalizeSupplier(b.supplier);
+    var subLine = sup ? '<div class="tag-sub sup">' + escapeHtml(sup) + '</div>'
+                      : '<div class="tag-sub">inches</div>';
+    var aria = safeName + (sup ? ' from ' + escapeHtml(sup) : '');
     return '<div class="box-tag' + low + '" data-id="' + b.id + '">' +
         '<div class="tag-name">' + safeName + '</div>' +
-        '<div class="tag-sub">inches</div>' + metaLine +
+        subLine + metaLine +
         '<div class="tag-stock">' +
           '<span class="num' + low + '" data-remain>' + remaining + '</span>' +
           '<span class="lbl">in stock</span>' +
         '</div>' +
         '<div class="tag-actions"><div class="stepper">' +
           '<button class="step-btn plus" data-plus="' + b.id + '"' + (remaining <= 0 ? ' disabled' : '') +
-            ' aria-label="Add one ' + safeName + ' box to this session">+</button>' +
+            ' aria-label="Add one ' + aria + ' box to this session">+</button>' +
           '<div class="step-count" data-used>' + used + '</div>' +
           '<button class="step-btn minus" data-minus="' + b.id + '"' + (used <= 0 ? ' disabled' : '') +
-            ' aria-label="Remove one ' + safeName + ' box from this session">−</button>' +
+            ' aria-label="Remove one ' + aria + ' box from this session">−</button>' +
         '</div><div class="session-count">used this session</div></div>' +
       '</div>';
   }
@@ -704,6 +748,8 @@
     for (var k in sessionUsage) if (sessionUsage[k] > 0) { total += sessionUsage[k]; types++; }
     document.getElementById('tally-count').textContent = total;
     document.getElementById('tally-types').textContent = types;
+    // "kinds" rather than "sizes": the same size from two suppliers is two of them
+    document.getElementById('tally-types-word').textContent = types === 1 ? 'kind' : 'kinds';
     document.getElementById('finish-session-btn').disabled = total === 0;
     document.getElementById('reset-session-btn').disabled = total === 0;
   }
@@ -753,12 +799,32 @@
     invTimer = setTimeout(function(){ enqueue({ action:'inventory', boxes: boxes }); }, 700);
   }
 
+  // Renaming a row onto an existing size+supplier is not refused - the row may
+  // be mid-edit, and losing what was typed is worse - but it is said out loud,
+  // because two cards for one shelf is how a count quietly goes wrong.
+  function warnTwin(box){
+    var t = twinOf(box.name, box.supplier, box.id);
+    if (!t) return;
+    showToast('Careful — ' + box.name + (normalizeSupplier(box.supplier) ? ' from ' + box.supplier : ' with no supplier') + ' is now on the shelf twice');
+  }
+
   function renderInventory(){
     var list = document.getElementById('inv-list');
+    // every supplier already on the shelf, offered back so the spelling stays
+    // one spelling - two spellings would be two boxes
+    var seen = {}, names = [];
+    for (var s2=0;s2<boxes.length;s2++){
+      var nm = normalizeSupplier(boxes[s2].supplier);
+      if (nm && !seen[supplierKey(nm)]) { seen[supplierKey(nm)] = 1; names.push(nm); }
+    }
+    names.sort();
+    var dl = document.getElementById('supplier-names');
+    if (dl) dl.innerHTML = names.map(function(n){ return '<option value="' + escapeHtml(n) + '"></option>'; }).join('');
     if (!boxes.length) { list.innerHTML = '<div class="empty">No box sizes yet — add one below.</div>'; return; }
     list.innerHTML = boxes.map(function(b){
       return '<div class="inv-row" data-id="' + b.id + '">' +
         '<input type="text" class="f-name" value="' + escapeHtml(b.name) + '">' +
+        '<input type="text" class="f-supplier" value="' + escapeHtml(normalizeSupplier(b.supplier)) + '" placeholder="supplier" list="supplier-names">' +
         '<input type="number" class="f-qty" min="0" value="' + b.qty + '">' +
         '<input type="number" class="f-cost" min="0" step="0.01" value="' + (b.cost || 0) + '">' +
         '<button class="icon-btn" data-remove="' + b.id + '">Remove</button>' +
@@ -778,7 +844,15 @@
         var cleaned = normalizeBoxName(ev.target.value);
         box.name = cleaned || box.name;
         ev.target.value = box.name;
+        warnTwin(box);
         renderPack(); renderHistory();
+      } else if (ev.target.classList.contains('f-supplier')) {
+        box.supplier = normalizeSupplier(ev.target.value);
+        ev.target.value = box.supplier;
+        warnTwin(box);
+        // the supplier is on the card, and the supplier list is rebuilt from
+        // what is on the shelf, so both are redrawn
+        renderInventory(); renderPack();
       } else if (ev.target.classList.contains('f-qty')) {
         box.qty = Math.max(0, parseInt(ev.target.value,10) || 0);
         paintCard(box);
@@ -794,7 +868,8 @@
       var id = btn.getAttribute('data-remove');
       var box = findBox(id);
       if (!box) return;
-      if (!confirm('Remove "' + box.name + '" from inventory? Past session history will keep its records.')) return;
+      var label = box.name + (normalizeSupplier(box.supplier) ? ' from ' + box.supplier : '');
+      if (!confirm('Remove "' + label + '" from inventory? Past session history will keep its records.')) return;
       boxes = boxes.filter(function(b){ return b.id !== id; });
       delete sessionUsage[id];
       renderInventory(); renderPack(); updateSessionBar();
@@ -972,14 +1047,23 @@
 
     document.getElementById('add-box-btn').addEventListener('click', function(){
       var nameEl = document.getElementById('new-name');
+      var supEl = document.getElementById('new-supplier');
       var qtyEl = document.getElementById('new-qty');
       var costEl = document.getElementById('new-cost');
       var name = normalizeBoxName(nameEl.value);
+      var supplier = normalizeSupplier(supEl ? supEl.value : '');
       if (!name) { showToast('Enter a box size or name first'); return; }
-      boxes.push({ id:uid(), name:name, qty:Math.max(0, parseInt(qtyEl.value,10)||0), cost:Math.max(0, parseFloat(costEl.value)||0) });
-      nameEl.value=''; qtyEl.value=0; costEl.value=0;
+      // the same size from the same supplier twice is two cards for one shelf,
+      // which is how a count goes wrong - so it is refused rather than warned
+      var dup = twinOf(name, supplier, null);
+      if (dup) {
+        showToast(supplier ? name + ' from ' + supplier + ' is already on the shelf' : name + ' is already on the shelf');
+        return;
+      }
+      boxes.push({ id:uid(), name:name, supplier:supplier, qty:Math.max(0, parseInt(qtyEl.value,10)||0), cost:Math.max(0, parseFloat(costEl.value)||0) });
+      nameEl.value=''; if (supEl) supEl.value=''; qtyEl.value=0; costEl.value=0;
       renderInventory(); renderPack(); queueInventorySave();
-      showToast('Added "' + name + '"');
+      showToast('Added "' + name + (supplier ? ' from ' + supplier : '') + '"');
     });
 
     document.getElementById('finish-session-btn').addEventListener('click', finishSession);
