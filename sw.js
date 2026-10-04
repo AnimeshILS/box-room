@@ -10,7 +10,7 @@
  * new worker installs.
  */
 
-var SHELL_CACHE = 'boxroom-shell-v2.1.0';   // bumped for the real ILS artwork
+var SHELL_CACHE = 'boxroom-shell-v2.2.0';   // bumped for the real ILS artwork
 var FONT_CACHE  = 'boxroom-fonts-v1';
 var KEEP = [SHELL_CACHE, FONT_CACHE];
 
@@ -19,9 +19,9 @@ var SHELL = [
   './index.html',
   './manifest.webmanifest',
   './logo.png',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-maskable-512.png'
+  './icon-192-v2.png',
+  './icon-512-v2.png',
+  './icon-maskable-512-v2.png'
 ];
 
 // Add entries one at a time: a single 404 must not fail the whole install
