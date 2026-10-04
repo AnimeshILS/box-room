@@ -10,7 +10,7 @@
  * new worker installs.
  */
 
-var SHELL_CACHE = 'boxroom-shell-v2.0.0';
+var SHELL_CACHE = 'boxroom-shell-v2.1.0';   // bumped for the real ILS artwork
 var FONT_CACHE  = 'boxroom-fonts-v1';
 var KEEP = [SHELL_CACHE, FONT_CACHE];
 
