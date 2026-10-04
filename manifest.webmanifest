@@ -1,0 +1,17 @@
+{
+  "name": "Box Room — India Leather Supply",
+  "short_name": "Box Room",
+  "description": "Packing box inventory for India Leather Supply. Tap a box as you use it, commit the session, stock updates on the shared sheet.",
+  "id": "ils-box-room",
+  "start_url": ".",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAFAF8",
+  "theme_color": "#141311",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

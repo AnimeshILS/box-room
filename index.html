@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Box Room — Packing Inventory</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#141311">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Box Room">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAF8;
+    --surface:#FFFFFF;
+    --surface-sunken:#F3F1EC;
+    --ink:#141311;
+    --ink-soft:#6F6B63;
+    --ink-faint:#A8A399;
+    --line:#E6E3DA;
+    --line-strong:#D5D1C4;
+    --brass:#A9752E;
+    --brass-hover:#8A5E22;
+    --brass-soft:#F5EAD3;
+    --brass-ink:#5C4419;
+    --warn:#B3261E;
+    --warn-soft:#FBEAE9;
+    --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  *{box-sizing:border-box;}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding:0 0 40px;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* ===== Header ===== */
+  header{
+    background:var(--surface);
+    padding:20px 24px 0;
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:10;
+    padding-top:max(20px, env(safe-area-inset-top));
+  }
+  header::after{
+    content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--brass);
+  }
+  .brand-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    max-width:960px; margin:0 auto; padding-bottom:16px;
+  }
+  .brand-left{ display:flex; align-items:center; gap:14px; min-width:0; }
+  .brand-logo{ height:44px; width:auto; display:block; }
+  .brand-divider{ width:1px; height:32px; background:var(--line-strong); }
+  .brand-title{
+    font-family:var(--font-display); font-weight:700; font-size:26px;
+    color:var(--ink); letter-spacing:0.005em; line-height:1;
+    white-space:nowrap;
+  }
+  .sync-badge{
+    display:flex; align-items:center; gap:7px;
+    font-family:var(--font-body); font-size:12px; font-weight:600; color:var(--ink-soft);
+    background:var(--surface-sunken); padding:6px 12px; border-radius:999px;
+  }
+  .sync-dot{ width:8px; height:8px; border-radius:50%; background:var(--ink-faint); flex-shrink:0; }
+  .sync-badge.synced .sync-dot{ background:#3F7D5C; }
+  .sync-badge.syncing .sync-dot{ background:var(--brass); animation:pulse 1s ease-in-out infinite; }
+  .sync-badge.error .sync-dot{ background:var(--warn); }
+  .sync-badge.local .sync-dot{ background:var(--ink-faint); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+  nav.tabs{
+    max-width:960px; margin:0 auto; display:flex; gap:4px;
+  }
+  nav.tabs button{
+    background:none; border:none; color:var(--ink-soft);
+    padding:12px 18px; margin-bottom:-1px;
+    font-family:var(--font-body); font-weight:600; font-size:14px;
+    cursor:pointer; border-bottom:2.5px solid transparent;
+  }
+  nav.tabs button.active{ color:var(--brass-ink); border-bottom-color:var(--brass); }
+  nav.tabs button:hover:not(.active){ color:var(--ink); }
+  nav.tabs button:focus-visible{ outline:2px solid var(--brass); outline-offset:-2px; border-radius:4px; }
+
+  /* Phone widths: the header has to fit one line without clipping. */
+  @media (max-width:560px){
+    header{ padding:14px 16px 0; }
+    .brand-row{ gap:10px; padding-bottom:12px; }
+    .brand-logo{ height:32px; }
+    .brand-divider{ height:24px; }
+    .brand-title{ font-size:19px; }
+    .sync-badge{ font-size:11px; padding:5px 10px; }
+    nav.tabs button{ padding:11px 12px; font-size:13px; }
+  }
+  @media (max-width:380px){
+    .brand-divider, .brand-title{ display:none; }
+  }
+
+  main{ max-width:960px; margin:0 auto; padding:26px 20px 0; }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fadeIn .16s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  h2.section-title{
+    font-family:var(--font-display); font-weight:600; font-size:15px;
+    color:var(--ink); margin:0 0 16px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+
+  /* ===== Box cards ===== */
+  .box-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(216px,1fr)); gap:14px;
+  }
+  .box-tag{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-left:3px solid var(--brass);
+    border-radius:var(--radius);
+    padding:16px;
+    transition:border-color .12s ease, box-shadow .12s ease;
+  }
+  .box-tag.low{ border-left-color:var(--warn); }
+  .box-tag:hover{ border-color:var(--line-strong); box-shadow:0 3px 14px rgba(20,19,17,0.06); }
+  .tag-name{
+    font-family:var(--font-display); font-weight:700; font-size:20px; letter-spacing:0.005em;
+    color:var(--ink); line-height:1.15;
+  }
+  .tag-sub{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; margin-top:3px;}
+  .tag-meta{ font-size:11.5px; color:var(--ink-soft); font-family:var(--font-mono); margin-top:6px; }
+  .tag-stock{
+    display:flex; align-items:baseline; gap:6px; margin-top:12px;
+  }
+  .tag-stock .num{ font-family:var(--font-mono); font-size:18px; font-weight:600; color:var(--ink-soft); }
+  .tag-stock .num.low{ color:var(--warn); }
+  .tag-stock .lbl{ font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; }
+
+  .tag-actions{ display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-top:14px; }
+  .stepper{ display:flex; align-items:center; gap:10px; background:var(--surface-sunken); border-radius:999px; padding:4px; }
+  .step-btn{
+    width:44px; height:44px; border-radius:50%; border:none;
+    background:var(--surface); color:var(--ink); font-family:var(--font-body); font-weight:700;
+    font-size:18px; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .12s ease, color .12s ease, transform .08s ease;
+    box-shadow:0 1px 2px rgba(20,19,17,0.08);
+    touch-action:manipulation;
+  }
+  .step-btn.plus{ background:var(--brass); color:#fff; }
+  .step-btn.plus:not(:disabled):hover{ background:var(--brass-hover); }
+  .step-btn.minus:not(:disabled):hover{ background:var(--line); }
+  .step-btn:active:not(:disabled){ transform:scale(0.9); }
+  .step-btn:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+  .step-btn:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
+  .step-count{
+    font-family:var(--font-mono); font-weight:600; font-size:16px; min-width:22px; text-align:center;
+  }
+  .session-count{
+    font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em;
+  }
+
+  /* ===== sticky session bar ===== */
+  .session-bar{
+    position:sticky; bottom:0; margin-top:26px;
+    background:var(--ink); color:var(--bg);
+    padding:16px 22px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    border-radius:var(--radius) var(--radius) 0 0;
+    box-shadow:0 -4px 20px rgba(0,0,0,0.14);
+    border-top:2px solid var(--brass);
+    padding-bottom:max(16px, env(safe-area-inset-bottom));
+  }
+  .session-bar .tally{ font-family:var(--font-body); font-size:13.5px; color:#D8D5CC; }
+  .session-bar .tally b{ font-family:var(--font-display); font-size:19px; color:#fff; font-weight:700; }
+  .btn{
+    font-family:var(--font-body); font-size:13.5px; font-weight:700;
+    padding:12px 22px; border-radius:999px; border:none; cursor:pointer;
+    touch-action:manipulation;
+  }
+  .btn-primary{ background:var(--brass); color:#fff; }
+  .btn-primary:hover:not(:disabled){ background:#C08D3E; }
+  .btn-primary:disabled{ background:#4A473F; color:#9B968B; cursor:not-allowed; }
+  .btn-ghost{ background:transparent; color:#D8D5CC; border:1px solid #4A473F; }
+  .btn-ghost:hover:not(:disabled){ border-color:#8A867A; color:#fff; }
+  .btn-ghost:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+
+  .toast{
+    position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-140%);
+    background:var(--ink); color:#fff; padding:11px 20px; border-radius:999px;
+    font-family:var(--font-body); font-weight:600; font-size:13px; z-index:50;
+    transition:transform .25s ease; box-shadow:0 6px 18px rgba(0,0,0,0.18);
+    border:1px solid var(--brass);
+  }
+  .toast.show{ transform:translateX(-50%) translateY(0); }
+
+  /* ===== inventory table ===== */
+  .inv-row{
+    display:grid; grid-template-columns:1fr 90px 100px 70px; gap:10px; align-items:center;
+    padding:11px 0; border-bottom:1px solid var(--line);
+  }
+  .inv-row.head{ font-family:var(--font-body); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); border-bottom:1px solid var(--line-strong); }
+  .inv-row input[type=text], .inv-row input[type=number]{
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface);
+    font-family:var(--font-mono); font-size:13px; color:var(--ink);
+  }
+  .inv-row input:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; border-color:var(--brass); }
+  .icon-btn{
+    background:none; border:1px solid var(--line); border-radius:var(--radius-sm); padding:7px 10px; cursor:pointer;
+    font-size:12px; color:var(--ink-soft); font-family:var(--font-body); font-weight:600;
+  }
+  .icon-btn:hover{ border-color:var(--warn); color:var(--warn); }
+  .icon-btn:focus-visible{ outline:2px solid var(--brass); }
+
+  .add-form{
+    margin-top:18px; padding:16px; background:var(--surface-sunken); border-radius:var(--radius);
+    display:grid; grid-template-columns:1fr 100px 100px auto; gap:10px; align-items:end;
+  }
+  .add-form label{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); display:block; margin-bottom:5px; }
+  .add-form input{ width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:13px; background:var(--surface); }
+  .add-form input:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
+
+  @media (max-width:560px){
+    .inv-row{ grid-template-columns:1fr 72px 82px 62px; gap:6px; }
+    .inv-row input[type=text], .inv-row input[type=number]{ padding:8px 6px; font-size:12px; }
+    .icon-btn{ padding:7px 6px; font-size:11px; }
+    .add-form{ grid-template-columns:1fr 1fr; }
+    .add-form > div:first-child, .add-form > button{ grid-column:1 / -1; }
+  }
+
+  /* ===== history ===== */
+  .bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .bar-label{ width:120px; flex-shrink:0; font-family:var(--font-mono); font-size:12px; }
+  .bar-track{ flex:1; background:var(--surface-sunken); border-radius:999px; height:14px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--brass); border-radius:999px; }
+  .bar-val{ width:34px; text-align:right; font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); flex-shrink:0; }
+
+  .session-log-item{
+    border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; background:var(--surface);
+  }
+  .session-log-item .date{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; color:var(--ink-faint); letter-spacing:0.05em; }
+  .session-log-item .items{ margin-top:8px; font-size:13.5px; display:flex; flex-wrap:wrap; gap:8px; }
+  .items .chip{ background:var(--brass-soft); border-radius:999px; padding:4px 12px; font-family:var(--font-mono); font-size:12px; color:var(--brass-ink); }
+
+  .empty{ text-align:center; padding:44px 20px; color:var(--ink-faint); font-size:13.5px; }
+  .empty .big{ font-size:34px; margin-bottom:10px; }
+
+  .settings-note{
+    font-size:12.5px; background:var(--brass-soft); border-radius:var(--radius-sm);
+    padding:12px 16px; margin-bottom:18px; line-height:1.5; color:var(--brass-ink);
+  }
+  .sync-card{
+    background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--brass);
+    border-radius:var(--radius); padding:18px; margin-bottom:8px;
+  }
+  .sync-form{ display:flex; gap:10px; flex-wrap:wrap; }
+  .sync-form input{
+    flex:1; min-width:220px; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius-sm);
+    font-family:var(--font-mono); font-size:12.5px; background:var(--surface); color:var(--ink);
+  }
+  .sync-form input:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
+  .sync-meta{ font-size:12px; color:var(--ink-faint); margin-top:10px; font-family:var(--font-mono); }
+  .sync-meta.ok{ color:#3F7D5C; }
+  .sync-meta.bad{ color:var(--warn); }
+
+  /* ===== lock screen ===== */
+  .lock{
+    position:fixed; inset:0; z-index:100; background:var(--bg);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .lock[hidden]{ display:none !important; }
+  .lock-card{
+    background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--brass);
+    border-radius:var(--radius); padding:28px; width:100%; max-width:380px;
+    box-shadow:0 8px 30px rgba(20,19,17,0.08);
+  }
+  .lock-card .brand-logo{ height:38px; margin-bottom:18px; }
+  .lock-card h1{
+    font-family:var(--font-display); font-size:20px; font-weight:700; margin:0 0 6px; color:var(--ink);
+  }
+  .lock-card p{ font-size:13px; color:var(--ink-soft); line-height:1.5; margin:0 0 18px; }
+  .lock-card label{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); display:block; margin-bottom:6px; }
+  .lock-card input{
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:var(--radius-sm);
+    font-family:var(--font-mono); font-size:14px; background:var(--surface); color:var(--ink); margin-bottom:12px;
+  }
+  .lock-card input:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; border-color:var(--brass); }
+  .lock-card .btn{ width:100%; }
+  .lock-msg{ font-size:12px; font-family:var(--font-mono); margin-top:12px; min-height:16px; }
+  .lock-msg.bad{ color:var(--warn); }
+  .lock-msg.ok{ color:#3F7D5C; }
+
+  /* ===== update bar ===== */
+  .update-bar{
+    position:fixed; bottom:0; left:0; right:0; z-index:60;
+    background:var(--brass); color:#fff; padding:12px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    font-size:13px; font-weight:600;
+  }
+  .update-bar[hidden]{ display:none !important; }
+  .update-bar button{
+    background:#fff; color:var(--brass-ink); border:none; border-radius:999px;
+    padding:8px 16px; font-weight:700; font-size:12.5px; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="lock" id="lock" hidden>
+  <div class="lock-card">
+    <img class="brand-logo" alt="India Leather Supply" src="logo.png">
+    <h1>Box Room</h1>
+    <p id="lock-intro">Enter the passphrase to connect this device to the box inventory. You only do this once per device.</p>
+    <div id="lock-url-wrap" hidden>
+      <label for="lock-url">Web app URL</label>
+      <input type="url" id="lock-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+    </div>
+    <label for="lock-token">Passphrase</label>
+    <input type="password" id="lock-token" autocomplete="current-password" inputmode="text">
+    <button class="btn btn-primary" id="lock-btn">Connect this device</button>
+    <div class="lock-msg" id="lock-msg"></div>
+  </div>
+</div>
+
+<div class="update-bar" id="update-bar" hidden>
+  <span>A new version of Box Room is ready.</span>
+  <button id="update-btn">Reload</button>
+</div>
+
+<header>
+  <div class="brand-row">
+    <div class="brand-left">
+      <img class="brand-logo" alt="India Leather Supply" src="logo.png">
+      <div class="brand-divider"></div>
+      <div class="brand-title">Box Room</div>
+    </div>
+    <div class="sync-badge local" id="sync-badge"><span class="sync-dot"></span><span id="sync-badge-text">Checking…</span></div>
+  </div>
+  <nav class="tabs">
+    <button data-view="pack" class="active">Pack Session</button>
+    <button data-view="inventory">Inventory</button>
+    <button data-view="history">History</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- PACK SESSION -->
+  <section class="view active" id="view-pack">
+    <h2 class="section-title">Tap +1 each time you use a box</h2>
+    <div class="box-grid" id="pack-grid"></div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section class="view" id="view-inventory">
+    <h2 class="section-title">Connection</h2>
+    <div class="sync-card" id="sync-card">
+      <div class="sync-form">
+        <input type="text" id="sync-url-input" placeholder="https://script.google.com/macros/s/…/exec">
+        <button class="btn btn-primary" id="sync-save-btn" style="height:38px;">Save &amp; test</button>
+      </div>
+      <div class="sync-meta" id="sync-meta">Not connected.</div>
+      <div class="sync-meta" style="margin-top:8px;">
+        <a href="#" id="forget-device" style="color:var(--warn);">Disconnect this device</a>
+      </div>
+    </div>
+
+    <h2 class="section-title" style="margin-top:26px;">Box types &amp; stock on hand</h2>
+    <div class="settings-note">Set current stock counts here whenever you do a physical recount, or add and remove box sizes as your packaging changes. Cost per box is optional. Fill it in if you want per-order box costs tracked in history.</div>
+    <div class="inv-row head">
+      <div>Box size</div><div>Qty on hand</div><div>Cost / box (₹)</div><div></div>
+    </div>
+    <div id="inv-list"></div>
+    <div class="add-form">
+      <div>
+        <label for="new-name">New box size / name</label>
+        <input type="text" id="new-name" placeholder="e.g. 6x6x6">
+      </div>
+      <div>
+        <label for="new-qty">Starting qty</label>
+        <input type="number" id="new-qty" min="0" value="0">
+      </div>
+      <div>
+        <label for="new-cost">Cost (₹)</label>
+        <input type="number" id="new-cost" min="0" step="0.01" value="0">
+      </div>
+      <button class="btn btn-primary" id="add-box-btn" style="height:38px;">Add box</button>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="view-history">
+    <h2 class="section-title">All-time usage by box</h2>
+    <div id="usage-bars"></div>
+    <h2 class="section-title" style="margin-top:28px;">Session log</h2>
+    <div id="session-log"></div>
+  </section>
+
+</main>
+
+<div class="session-bar" id="session-bar">
+  <div class="tally">Session tally: <b id="tally-count">0</b> boxes across <span id="tally-types">0</span> sizes</div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn btn-ghost" id="reset-session-btn" disabled>Reset</button>
+    <button class="btn btn-primary" id="finish-session-btn" disabled>Commit</button>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  // ---------------------------------------------------------------
+  // Box Room - standalone installable app (PWA)
+  //
+  // The app shell is cached on the device by sw.js, so opening it costs
+  // no network at all. The Apps Script sheet is only touched to sync.
+  //
+  // ENDPOINT is baked in at build time. If it is left empty the app asks
+  // for it on the lock screen, so this file works unmodified either way.
+  // ---------------------------------------------------------------
+
+  var ENDPOINT = '__EXEC_URL__';
+  if (ENDPOINT.indexOf('__EXEC') === 0) ENDPOINT = '';
+
+  var LS = {
+    inv:   'boxroom.inv.v4',
+    log:   'boxroom.log.v4',
+    queue: 'boxroom.queue.v4',
+    url:   'box-room-sync-url',
+    token: 'boxroom.token.v1'
+  };
+
+  var BOX_TYPES = ["7x4x1","4x4x4","7x5.5x2","3x3x12","12x4x3","8x5x3 (3.5)","9x6x3","13x9x2","5x5x24"];
+
+  var VOL_WEIGHT_DIVISOR = 5000;
+  var IN_TO_CM = 2.54;
+
+  var boxes = [], sessions = [], sessionUsage = {}, queue = [];
+  var cards = {};
+  var flushing = false, retryTimer = null, invTimer = null, seeded = false;
+  var unlocked = false;
+
+  // ---------------- helpers ----------------
+
+  function uid(){ return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function lsSet(k,v){ try { localStorage.setItem(k,v); return true; } catch(e){ return false; } }
+  function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+  function safeParse(raw){ if (raw == null) return null; try { return JSON.parse(raw); } catch(e){ return null; } }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function normalizeBoxName(s){
+    return String(s).trim().replace(/×/g,'x').replace(/\s*[xX]\s*/g,'x').replace(/\s{2,}/g,' ');
+  }
+  function findBox(id){
+    for (var i=0;i<boxes.length;i++) if (boxes[i].id === id) return boxes[i];
+    return null;
+  }
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+  function parseDimsInches(name){
+    var nums = String(name).split('(')[0].match(/[\d.]+/g);
+    if (!nums || nums.length < 3) return null;
+    return nums.slice(0,3).map(Number);
+  }
+  function volumetricWeightKg(name){
+    var d = parseDimsInches(name);
+    if (!d) return null;
+    return (d[0]*IN_TO_CM * d[1]*IN_TO_CM * d[2]*IN_TO_CM) / VOL_WEIGHT_DIVISOR;
+  }
+
+  // ---------------- status ----------------
+
+  function setSync(state, message){
+    var badge = document.getElementById('sync-badge');
+    var text  = document.getElementById('sync-badge-text');
+    if (!badge) return;
+    badge.className = 'sync-badge ' + (state === 'pending' ? 'syncing' : state);
+    var labels = { synced:'Synced', syncing:'Syncing…', error:'Sync error', local:'Local only', pending:'Saving…' };
+    text.textContent = message || labels[state] || state;
+  }
+  function updateSyncMeta(message, cls){
+    var el = document.getElementById('sync-meta');
+    if (!el) return;
+    el.textContent = message;
+    el.className = 'sync-meta' + (cls ? ' ' + cls : '');
+  }
+
+  // ---------------- connection details ----------------
+
+  function endpoint(){ return ENDPOINT || lsGet(LS.url) || ''; }
+  function token(){ return lsGet(LS.token) || ''; }
+  function configured(){ return !!(endpoint() && token()); }
+
+  function apiGet(){
+    var url = endpoint();
+    if (!url) return Promise.resolve(null);
+    var sep = url.indexOf('?') === -1 ? '?' : '&';
+    return fetch(url + sep + 'api=bootstrap&token=' + encodeURIComponent(token()) + '&t=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+  }
+  function apiPost(payload){
+    var url = endpoint();
+    if (!url) return Promise.resolve(null);
+    var body = {};
+    for (var k in payload) body[k] = payload[k];
+    body.token = token();
+    // text/plain keeps this a simple request, so the browser skips a CORS
+    // preflight that Apps Script cannot answer.
+    return fetch(url, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    }).then(function(r){ return r.json(); }).catch(function(){ return null; });
+  }
+
+  // ---------------- write queue ----------------
+
+  function persistQueue(){ lsSet(LS.queue, JSON.stringify(queue)); }
+
+  function enqueue(job){
+    if (job.action === 'inventory') {
+      queue = queue.filter(function(j){ return j.action !== 'inventory'; });
+    }
+    queue.push(job);
+    persistQueue();
+    flush();
+  }
+
+  function flush(){
+    if (flushing || !queue.length || !configured()) return;
+    flushing = true;
+    setSync('pending', queue.length > 1 ? 'Saving ' + queue.length + '…' : 'Saving…');
+    apiPost(queue[0]).then(function(res){
+      flushing = false;
+      if (res && res.ok) {
+        queue.shift();
+        persistQueue();
+        if (res.inventory && !queue.length) reconcile(res.inventory);
+        if (queue.length) flush();
+        else setSync('synced');
+      } else if (res && res.error === 'unauthorized') {
+        setSync('error', 'Passphrase rejected');
+        lock('The passphrase for this device is no longer accepted. Enter it again.');
+      } else {
+        setSync('error', 'Not saved to the sheet yet — retrying');
+        scheduleRetry();
+      }
+    });
+  }
+  function scheduleRetry(){
+    if (retryTimer) return;
+    retryTimer = setTimeout(function(){ retryTimer = null; flush(); }, 8000);
+  }
+
+  function reconcile(serverBoxes){
+    if (!serverBoxes || !serverBoxes.length) return;
+    var changed = false;
+    for (var i=0;i<serverBoxes.length;i++){
+      var local = findBox(serverBoxes[i].id);
+      if (local && local.qty !== serverBoxes[i].qty) { local.qty = serverBoxes[i].qty; changed = true; }
+    }
+    if (changed) { saveLocal(); boxes.forEach(paintCard); renderInventory(); }
+  }
+
+  // ---------------- local persistence ----------------
+
+  function saveLocal(){
+    lsSet(LS.inv, JSON.stringify(boxes));
+    lsSet(LS.log, JSON.stringify(sessions.slice(0,400)));
+  }
+  function loadLocal(){
+    boxes    = safeParse(lsGet(LS.inv)) || [];
+    sessions = safeParse(lsGet(LS.log)) || [];
+    queue    = safeParse(lsGet(LS.queue)) || [];
+    if (!Array.isArray(boxes)) boxes = [];
+    if (!Array.isArray(sessions)) sessions = [];
+    if (!Array.isArray(queue)) queue = [];
+    for (var i=0;i<boxes.length;i++) boxes[i].name = normalizeBoxName(boxes[i].name);
+  }
+  // Draw the default list so a fresh device has something on screen, but never
+  // push it anywhere - that would overwrite real stock counts with zeros.
+  function seedIfEmpty(){
+    if (boxes.length) return false;
+    boxes = BOX_TYPES.map(function(n){ return { id:uid(), name:normalizeBoxName(n), qty:0, cost:0 }; });
+    saveLocal();
+    return true;
+  }
+
+  // ---------------- pack view ----------------
+
+  function byVolume(a,b){
+    var va = volumetricWeightKg(a.name), vb = volumetricWeightKg(b.name);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return va - vb;
+  }
+
+  function cardHtml(b){
+    var used = sessionUsage[b.id] || 0;
+    var remaining = b.qty - used;
+    var low = remaining <= 5 ? ' low' : '';
+    var volWt = volumetricWeightKg(b.name);
+    var meta = [];
+    if (volWt != null) meta.push(volWt.toFixed(2) + ' kg vol. wt');
+    if (b.cost && b.cost > 0) meta.push('₹' + b.cost.toFixed(2) + '/box');
+    var metaLine = meta.length ? '<div class="tag-meta">' + meta.join(' · ') + '</div>' : '';
+    var safeName = escapeHtml(b.name);
+    return '<div class="box-tag' + low + '" data-id="' + b.id + '">' +
+        '<div class="tag-name">' + safeName + '</div>' +
+        '<div class="tag-sub">inches</div>' + metaLine +
+        '<div class="tag-stock">' +
+          '<span class="num' + low + '" data-remain>' + remaining + '</span>' +
+          '<span class="lbl">in stock</span>' +
+        '</div>' +
+        '<div class="tag-actions"><div class="stepper">' +
+          '<button class="step-btn plus" data-plus="' + b.id + '"' + (remaining <= 0 ? ' disabled' : '') +
+            ' aria-label="Add one ' + safeName + ' box to this session">+</button>' +
+          '<div class="step-count" data-used>' + used + '</div>' +
+          '<button class="step-btn minus" data-minus="' + b.id + '"' + (used <= 0 ? ' disabled' : '') +
+            ' aria-label="Remove one ' + safeName + ' box from this session">−</button>' +
+        '</div><div class="session-count">used this session</div></div>' +
+      '</div>';
+  }
+
+  function renderPack(){
+    var grid = document.getElementById('pack-grid');
+    cards = {};
+    if (!boxes.length) {
+      grid.innerHTML = '<div class="empty"><div class="big">📦</div>No box sizes yet. Add some in the Inventory tab.</div>';
+      updateSessionBar();
+      return;
+    }
+    grid.innerHTML = boxes.slice().sort(byVolume).map(cardHtml).join('');
+    var els = grid.querySelectorAll('.box-tag');
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      cards[el.getAttribute('data-id')] = {
+        el: el,
+        remain: el.querySelector('[data-remain]'),
+        used:   el.querySelector('[data-used]'),
+        plus:   el.querySelector('[data-plus]'),
+        minus:  el.querySelector('[data-minus]')
+      };
+    }
+    updateSessionBar();
+  }
+
+  // Hot path: one tap touches five DOM properties, nothing is rebuilt.
+  function paintCard(box){
+    var c = cards[box.id];
+    if (!c) return;
+    var used = sessionUsage[box.id] || 0;
+    var remaining = box.qty - used;
+    var low = remaining <= 5;
+    c.used.textContent = used;
+    c.remain.textContent = remaining;
+    c.el.classList.toggle('low', low);
+    c.remain.classList.toggle('low', low);
+    c.plus.disabled = remaining <= 0;
+    c.minus.disabled = used <= 0;
+  }
+
+  function bump(id, delta){
+    var box = findBox(id);
+    if (!box) return;
+    var next = (sessionUsage[id] || 0) + delta;
+    if (next < 0) next = 0;
+    if (next > box.qty) return;
+    if (next === 0) delete sessionUsage[id]; else sessionUsage[id] = next;
+    paintCard(box);
+    updateSessionBar();
+  }
+
+  function updateSessionBar(){
+    var total = 0, types = 0;
+    for (var k in sessionUsage) if (sessionUsage[k] > 0) { total += sessionUsage[k]; types++; }
+    document.getElementById('tally-count').textContent = total;
+    document.getElementById('tally-types').textContent = types;
+    document.getElementById('finish-session-btn').disabled = total === 0;
+    document.getElementById('reset-session-btn').disabled = total === 0;
+  }
+
+  function finishSession(){
+    var items = [];
+    for (var id in sessionUsage) {
+      if (!(sessionUsage[id] > 0)) continue;
+      var box = findBox(id);
+      if (box) items.push({ id:id, name:box.name, qty:sessionUsage[id], cost:box.cost || 0 });
+    }
+    if (!items.length) return;
+
+    for (var i=0;i<items.length;i++){
+      var b = findBox(items[i].id);
+      b.qty = Math.max(0, b.qty - items[i].qty);
+    }
+    var record = { id: uid(), ts: Date.now(), items: items };
+    sessions.unshift(record);
+    sessionUsage = {};
+
+    saveLocal();
+    boxes.forEach(paintCard);
+    renderInventory();
+    renderHistory();
+    updateSessionBar();
+
+    var total = 0;
+    for (var j=0;j<items.length;j++) total += items[j].qty;
+    showToast('Session logged — ' + total + ' box' + (total===1?'':'es') + ' packed');
+
+    enqueue({ action:'commit', sessionId: record.id, ts: record.ts, items: items });
+  }
+
+  function resetSession(){
+    sessionUsage = {};
+    boxes.forEach(paintCard);
+    updateSessionBar();
+  }
+
+  // ---------------- inventory view ----------------
+
+  function queueInventorySave(){
+    saveLocal();
+    clearTimeout(invTimer);
+    if (configured()) setSync('pending');
+    invTimer = setTimeout(function(){ enqueue({ action:'inventory', boxes: boxes }); }, 700);
+  }
+
+  function renderInventory(){
+    var list = document.getElementById('inv-list');
+    if (!boxes.length) { list.innerHTML = '<div class="empty">No box sizes yet — add one below.</div>'; return; }
+    list.innerHTML = boxes.map(function(b){
+      return '<div class="inv-row" data-id="' + b.id + '">' +
+        '<input type="text" class="f-name" value="' + escapeHtml(b.name) + '">' +
+        '<input type="number" class="f-qty" min="0" value="' + b.qty + '">' +
+        '<input type="number" class="f-cost" min="0" step="0.01" value="' + (b.cost || 0) + '">' +
+        '<button class="icon-btn" data-remove="' + b.id + '">Remove</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  function wireInventoryDelegation(){
+    var list = document.getElementById('inv-list');
+
+    list.addEventListener('change', function(ev){
+      var row = ev.target.closest('.inv-row');
+      if (!row) return;
+      var box = findBox(row.getAttribute('data-id'));
+      if (!box) return;
+      if (ev.target.classList.contains('f-name')) {
+        var cleaned = normalizeBoxName(ev.target.value);
+        box.name = cleaned || box.name;
+        ev.target.value = box.name;
+        renderPack(); renderHistory();
+      } else if (ev.target.classList.contains('f-qty')) {
+        box.qty = Math.max(0, parseInt(ev.target.value,10) || 0);
+        paintCard(box);
+      } else if (ev.target.classList.contains('f-cost')) {
+        box.cost = Math.max(0, parseFloat(ev.target.value) || 0);
+      } else return;
+      queueInventorySave();
+    });
+
+    list.addEventListener('click', function(ev){
+      var btn = ev.target.closest('[data-remove]');
+      if (!btn) return;
+      var id = btn.getAttribute('data-remove');
+      var box = findBox(id);
+      if (!box) return;
+      if (!confirm('Remove "' + box.name + '" from inventory? Past session history will keep its records.')) return;
+      boxes = boxes.filter(function(b){ return b.id !== id; });
+      delete sessionUsage[id];
+      renderInventory(); renderPack(); updateSessionBar();
+      queueInventorySave();
+    });
+  }
+
+  // ---------------- history view ----------------
+
+  function renderHistory(){
+    var totals = {};
+    for (var i=0;i<sessions.length;i++){
+      var items = sessions[i].items || [];
+      for (var j=0;j<items.length;j++) totals[items[j].name] = (totals[items[j].name] || 0) + items[j].qty;
+    }
+    var entries = Object.keys(totals).map(function(k){ return [k, totals[k]]; })
+      .sort(function(a,b){ return b[1]-a[1]; });
+
+    var barsEl = document.getElementById('usage-bars');
+    if (!entries.length) {
+      barsEl.innerHTML = '<div class="empty">No sessions logged yet — finish a pack session to start building usage data.</div>';
+    } else {
+      var max = entries[0][1];
+      barsEl.innerHTML = entries.map(function(e){
+        return '<div class="bar-row"><div class="bar-label">' + escapeHtml(e[0]) + '</div>' +
+          '<div class="bar-track"><div class="bar-fill" style="width:' + (e[1]/max*100).toFixed(0) + '%"></div></div>' +
+          '<div class="bar-val">' + e[1] + '</div></div>';
+      }).join('');
+    }
+
+    var logEl = document.getElementById('session-log');
+    if (!sessions.length) { logEl.innerHTML = ''; return; }
+    logEl.innerHTML = sessions.slice(0,50).map(function(s){
+      var d = new Date(s.ts);
+      var dateStr = d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) +
+        ' · ' + d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+      var items = s.items || [];
+      var totalCost = 0;
+      for (var i=0;i<items.length;i++) totalCost += (items[i].cost || 0) * items[i].qty;
+      return '<div class="session-log-item"><div class="date">' + dateStr +
+        (totalCost > 0 ? ' · ₹' + totalCost.toFixed(2) + ' in boxes' : '') + '</div>' +
+        '<div class="items">' + items.map(function(it){
+          return '<span class="chip">' + escapeHtml(it.name) + ' ×' + it.qty + '</span>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+
+  // ---------------- lock screen ----------------
+
+  function lock(message){
+    unlocked = false;
+    var el = document.getElementById('lock');
+    document.getElementById('lock-url-wrap').hidden = !!ENDPOINT;
+    if (!ENDPOINT) document.getElementById('lock-url').value = lsGet(LS.url) || '';
+    if (message) {
+      var m = document.getElementById('lock-msg');
+      m.textContent = message;
+      m.className = 'lock-msg bad';
+    }
+    el.hidden = false;
+  }
+  function unlock(){
+    unlocked = true;
+    document.getElementById('lock').hidden = true;
+  }
+
+  function initLock(){
+    var btn = document.getElementById('lock-btn');
+    var msg = document.getElementById('lock-msg');
+
+    function attempt(){
+      var url = ENDPOINT || document.getElementById('lock-url').value.trim();
+      var pass = document.getElementById('lock-token').value;
+      if (!url) { msg.textContent = 'Enter the web app URL.'; msg.className = 'lock-msg bad'; return; }
+      if (!pass) { msg.textContent = 'Enter the passphrase.'; msg.className = 'lock-msg bad'; return; }
+      msg.textContent = 'Checking…';
+      msg.className = 'lock-msg';
+      btn.disabled = true;
+      lsSet(LS.url, url);
+      lsSet(LS.token, pass);
+      apiPost({ action:'ping' }).then(function(res){
+        btn.disabled = false;
+        if (res && res.ok) {
+          msg.textContent = 'Connected.';
+          msg.className = 'lock-msg ok';
+          document.getElementById('lock-token').value = '';
+          unlock();
+          updateSyncMeta('Connected to the box sheet.', 'ok');
+          document.getElementById('sync-url-input').value = url;
+          if (queue.length) flush();
+          refreshFromCloud();
+        } else if (res && res.error === 'unauthorized') {
+          lsDel(LS.token);
+          msg.textContent = 'Passphrase not accepted.';
+          msg.className = 'lock-msg bad';
+        } else {
+          lsDel(LS.token);
+          msg.textContent = 'Could not reach the web app. Check the URL and that you are online.';
+          msg.className = 'lock-msg bad';
+        }
+      });
+    }
+
+    btn.addEventListener('click', attempt);
+    document.getElementById('lock-token').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') attempt();
+    });
+  }
+
+  // ---------------- connection card ----------------
+
+  function initSyncCard(){
+    var input = document.getElementById('sync-url-input');
+    var btn = document.getElementById('sync-save-btn');
+
+    if (ENDPOINT) {
+      input.value = ENDPOINT;
+      input.disabled = true;
+      btn.disabled = true;
+      updateSyncMeta('Built in to this app. Every device that installs it talks to the same sheet.', 'ok');
+    } else {
+      input.value = lsGet(LS.url) || '';
+    }
+
+    btn.addEventListener('click', function(){
+      var url = input.value.trim();
+      if (!url) { updateSyncMeta('Enter the web app URL first.', 'bad'); return; }
+      lsSet(LS.url, url);
+      updateSyncMeta('Testing…');
+      apiPost({ action:'ping' }).then(function(res){
+        if (res && res.ok) { updateSyncMeta('Connected.', 'ok'); refreshFromCloud(); }
+        else if (res && res.error === 'unauthorized') lock('Enter the passphrase for this device.');
+        else updateSyncMeta('Could not reach that URL. Check it was deployed with "Anyone" access.', 'bad');
+      });
+    });
+
+    document.getElementById('forget-device').addEventListener('click', function(e){
+      e.preventDefault();
+      if (!confirm('Disconnect this device? Unsent changes will be lost and you will need the passphrase again.')) return;
+      lsDel(LS.token); lsDel(LS.queue);
+      queue = [];
+      lock('Enter the passphrase to reconnect this device.');
+    });
+  }
+
+  // ---------------- cloud refresh ----------------
+
+  function refreshFromCloud(){
+    if (!configured()) { setSync('local'); return; }
+    setSync('syncing');
+    apiGet().then(function(res){
+      if (res && res.error === 'unauthorized') { setSync('error','Passphrase rejected'); lock('Enter the passphrase for this device.'); return; }
+      if (!res || !res.ok) { setSync('error'); return; }
+      if (queue.length) { setSync('pending'); flush(); return; }
+      if (res.inventory && res.inventory.length) { boxes = res.inventory; seeded = false; }
+      else if (seeded) { seeded = false; enqueue({ action:'inventory', boxes: boxes }); }
+      sessions = res.sessions || [];
+      saveLocal();
+      renderPack(); renderInventory(); renderHistory(); updateSessionBar();
+      setSync('synced');
+    });
+  }
+
+  // ---------------- wiring ----------------
+
+  function wire(){
+    document.getElementById('pack-grid').addEventListener('click', function(ev){
+      var btn = ev.target.closest('button[data-plus], button[data-minus]');
+      if (!btn || btn.disabled) return;
+      if (btn.hasAttribute('data-plus')) bump(btn.getAttribute('data-plus'), 1);
+      else bump(btn.getAttribute('data-minus'), -1);
+    });
+
+    wireInventoryDelegation();
+
+    document.getElementById('add-box-btn').addEventListener('click', function(){
+      var nameEl = document.getElementById('new-name');
+      var qtyEl = document.getElementById('new-qty');
+      var costEl = document.getElementById('new-cost');
+      var name = normalizeBoxName(nameEl.value);
+      if (!name) { showToast('Enter a box size or name first'); return; }
+      boxes.push({ id:uid(), name:name, qty:Math.max(0, parseInt(qtyEl.value,10)||0), cost:Math.max(0, parseFloat(costEl.value)||0) });
+      nameEl.value=''; qtyEl.value=0; costEl.value=0;
+      renderInventory(); renderPack(); queueInventorySave();
+      showToast('Added "' + name + '"');
+    });
+
+    document.getElementById('finish-session-btn').addEventListener('click', finishSession);
+    document.getElementById('reset-session-btn').addEventListener('click', function(){
+      var any = false;
+      for (var k in sessionUsage) if (sessionUsage[k] > 0) { any = true; break; }
+      if (any && !confirm('Clear this session\'s tally without saving?')) return;
+      resetSession();
+    });
+
+    var tabs = document.querySelectorAll('nav.tabs button');
+    for (var i=0;i<tabs.length;i++){
+      tabs[i].addEventListener('click', function(){
+        for (var j=0;j<tabs.length;j++) tabs[j].classList.remove('active');
+        var views = document.querySelectorAll('.view');
+        for (var v=0;v<views.length;v++) views[v].classList.remove('active');
+        this.classList.add('active');
+        document.getElementById('view-' + this.dataset.view).classList.add('active');
+      });
+    }
+
+    window.addEventListener('online', function(){ flush(); });
+    window.addEventListener('offline', function(){
+      if (configured()) setSync('error', 'Offline — saved on this device');
+    });
+    document.addEventListener('visibilitychange', function(){
+      if (!document.hidden && unlocked) { flush(); refreshFromCloud(); }
+    });
+    window.addEventListener('beforeunload', function(e){
+      if (queue.length) { e.preventDefault(); e.returnValue = ''; }
+    });
+  }
+
+  // ---------------- service worker ----------------
+
+  function initServiceWorker(){
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      reg.addEventListener('updatefound', function(){
+        var sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', function(){
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            document.getElementById('update-bar').hidden = false;
+          }
+        });
+      });
+    }).catch(function(){ /* app still works, just without offline caching */ });
+
+    document.getElementById('update-btn').addEventListener('click', function(){
+      location.reload();
+    });
+  }
+
+  // ---------------- init ----------------
+
+  loadLocal();
+  seeded = seedIfEmpty();
+
+  renderPack();
+  renderInventory();
+  renderHistory();
+  updateSessionBar();
+  initLock();
+  initSyncCard();
+  wire();
+  initServiceWorker();
+
+  if (!configured()) {
+    setSync('local');
+    lock();
+  } else {
+    unlock();
+    if (queue.length) flush();
+    refreshFromCloud();
+  }
+
+})();
+</script>
+
+</body>
+</html>
